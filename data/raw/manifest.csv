@@ -1,0 +1,4 @@
+"file","url","downloaded_utc","md5"
+"oecd_yields.csv","https://sdmx.oecd.org/public/rest/v1/data/OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0/USA+JPN+GBR+CAN+CHE.M.IRLT.PA._Z._Z._Z._Z.N?startPeriod=2017-01&endPeriod=2026-04","2026-10-06 00:58:50 UTC","576b636cf640bbd0819c38f177ee9a5a"
+"bis_neer.xml","https://stats.bis.org/api/v1/data/WS_EER/M.N.B.US+JP+GB+CA+CH?startPeriod=2017-01&endPeriod=2026-04","2026-10-06 00:58:50 UTC","52d6cfc28a29c1f53a660c7a93f011d6"
+"bis_fx.xml","https://stats.bis.org/api/v1/data/WS_XRU/M.JP+GB+CA+CH?startPeriod=2017-01&endPeriod=2026-04","2026-10-06 00:58:51 UTC","95b5142f861a8c26c972ae1accf1bb11"
