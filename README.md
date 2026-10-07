@@ -1,75 +1,87 @@
-# High Yields, Hot Currencies? — Blog 4
+# High Yields, Hot Currencies?
 
-Open `blog4.html` for the rendered, self-contained article; edit `blog4.qmd` for submission. The source computes every numerical statement from data. Replication repository: [xia071212/blog4repo](https://github.com/xia071212/blog4repo). The HTML is a downloadable standalone article; GitHub Pages has not been enabled. The course also asks for a blog URL and a corresponding GitHub repository URL when submitting a coding project.
+This repository contains the data, R code, and results behind the blog **“High Yields, Hot Currencies?”** It allows readers to reproduce the data transformations, correlations, and three figures used to examine how government bond yields relate to currency strength.
 
-## Reproduce
+## Data and methods
 
-From this directory, use R 4.1+ (tested with R 4.6.1) and Quarto:
+The analysis covers the **United States, Japan, United Kingdom, Canada, and Switzerland**, using monthly observations from **January 2017 to April 2026**.
 
-```r
-install.packages(c('curl','xml2','readr','dplyr','tidyr','ggplot2','knitr','rmarkdown'))
-```
+| Raw file | Source | Meaning and units |
+|---|---|---|
+| [`data/raw/oecd_yields.csv`](data/raw/oecd_yields.csv) | [OECD Financial Market](https://data-explorer.oecd.org/), `DSD_STES@DF_FINMARK` version 4.0; monthly `IRLT`, unit `PA` | National benchmark long-term government bond yields, conventionally ten-year, in percent per year. |
+| [`data/raw/bis_neer.xml`](data/raw/bis_neer.xml) | [BIS effective exchange rates](https://data.bis.org/topics/EER), `WS_EER`; monthly, nominal, broad basket | Nominal effective exchange rate (NEER): a trade-weighted currency index, with 2020 averaging 100. A higher index means appreciation against the basket. |
+| [`data/raw/bis_fx.xml`](data/raw/bis_fx.xml) | [BIS bilateral exchange rates](https://data.bis.org/topics/XRU), `WS_XRU` | Local currency units per US dollar for Japan, the UK, Canada, and Switzerland. A lower rate means local currency appreciation against the dollar. |
 
-```sh
-Rscript run_all.R
-quarto render blog4.qmd
-```
+Exact API requests and raw-file checksums are recorded in [`data/raw/manifest.csv`](data/raw/manifest.csv). The included snapshot was downloaded on October 5, 2026, New York time; historical values may differ from later downloads.
 
-The default uses the included official raw snapshot, preserving the submitted vintage. To retrieve a new vintage from the same official APIs, deliberately run:
+### Processing
 
-```sh
-Rscript run_all.R --refresh
-quarto render blog4.qmd
-```
+The code standardizes country codes and month labels, retains BIS **monthly-average** observations (`COLLECTION=A`), and joins the datasets by country and month. It also attaches the same month's US yield to each country. It checks for duplicate or missing observations, complete monthly coverage, positive exchange-rate values, and the NEER base-year average. No interpolation, outlier removal, or inflation adjustment is applied.
 
-A refresh overwrites raw snapshots and can revise historical results. Preserve a copy before refreshing. There is no fallback to another provider, synthetic data, interpolation, or silent date truncation. Download failures and incomplete/duplicate monthly coverage stop execution. `quarto render` cleans and rebuilds figures from raw data; run `run_all.R --refresh` separately for a new download.
+Let `y` be the domestic yield, `y_US` the US yield, `N` the NEER index, and `E` local currency units per dollar. The main variables are:
 
-`session-info.txt` records tested package versions. Install Quarto and make its `quarto` command available on your PATH. All analysis paths are relative to this repository.
+| Variable in the processed data | Calculation | Interpretation |
+|---|---|---|
+| `spread` | `y[t] - y_US[t]` | Domestic yield advantage over US Treasuries, in percentage points. |
+| `dy12` | `y[t] - y[t-12]` | Change in the domestic yield over twelve months, in percentage points. |
+| `ds12` | `spread[t] - spread[t-12]` | Change in the relative yield advantage over twelve months, in percentage points. |
+| `neer12` | `100 * (N[t] / N[t-12] - 1)` | Twelve-month appreciation against the currency basket, in percent. |
+| `fx12` | `100 * (E[t-12] / E[t] - 1)` | Twelve-month appreciation against the dollar, in percent. The ratio is reversed because the original quotation is local currency per dollar. |
 
-## Contents
+The level data contain **112 months per country**: 560 yield observations, 560 NEER observations, and 448 retained bilateral exchange-rate observations. Twelve-month changes begin in January 2018, leaving **100 observations per country** through April 2026. The US is excluded from the dollar-relative comparison because its yield spread against itself is zero.
 
-- `R/01_download.R`: official API requests, cached download, retrieval times and MD5 hashes.
-- `R/02_clean.R`: parse SDMX, validate series/months/units, join, transform and calculate descriptive correlations and sensitivity checks.
-- `R/03_figures.R`: all three figures, in PNG and vector PDF.
-- `run_all.R`: complete download/clean/figures pipeline; accepts `--refresh`.
-- `data/raw/`: unedited official responses, API manifest and OECD structural metadata.
-- `data/processed/`: monthly panel, correlations, sensitivities and base-year checks.
-- `figures/`: three non-redundant figures.
-- `blog4.qmd`, `blog4.html`: article source and standalone rendered page.
+Correlations are calculated separately for each country using Pearson's correlation coefficient. Scatterplot lines are ordinary least-squares fits with an intercept. Both variables refer to the same twelve-month interval. Additional checks use one-month changes and nine non-overlapping January-to-January changes per non-US country. These are descriptive calculations; overlapping annual windows are not independent observations.
 
-## Verified sources and dimensions
+## Code
 
-1. OECD Financial Market: `OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0`. Monthly long-term interest rate `IRLT`, annual percentage `PA`, national methodology `N`; countries USA, JPN, GBR, CAN, CHE. Current official API version was discovered from the dataflow registry. The old 1.0 endpoint no longer returned this dataflow. [Indicator definition](https://www.oecd.org/en/data/indicators/long-term-interest-rates.html) and [Data Explorer](https://data-explorer.oecd.org/). These are national benchmark long-term government yields, conventionally ten-year; they are not a perfectly identical security across markets. The OECD website's explanatory indicator page was blocked in the retrieval environment; the API structure and observations were accessible and verified. We preserve that distinction rather than claiming that page was successfully downloaded.
-2. BIS `WS_EER`, key `M.N.B.US+JP+GB+CA+CH`: monthly, nominal, broad basket, collection `A`. The official [EER documentation](https://data.bis.org/topics/EER) confirms geometric trade-weighted indices, 2020=100, appreciation when the index rises, and business-day-average monthly inputs. The mean of the twelve 2020 observations is checked against 100 within rounding tolerance. Common index bases permit comparison of changes since the base year, not currency valuations.
-3. BIS `WS_XRU`: monthly bilateral rates for JP, GB, CA, CH. The request returns both average (`A`) and end-period (`E`) series; the cleaner explicitly retains only `A`. Official [XRU documentation](https://data.bis.org/topics/XRU) confirms local currency units per USD and the inverse appreciation direction. Units are JPY, GBP, CAD and CHF per USD. No fabricated US/USD series is added.
+| Script | Role |
+|---|---|
+| [`R/01_download.R`](R/01_download.R) | Downloads data from the official OECD and BIS APIs when raw files are absent, or reuses the included snapshot. Records request URLs and checksums. |
+| [`R/02_clean.R`](R/02_clean.R) | Filters and validates the data, builds the monthly panel, calculates yield and currency changes, and saves correlations and sensitivity results. |
+| [`R/03_figures.R`](R/03_figures.R) | Creates the three blog figures in PNG and PDF formats. |
+| [`run_all.R`](run_all.R) | Runs the download, cleaning, and plotting steps in order, then records the R session and package versions. |
 
-Full reproducible URLs, retrieval timestamps (UTC), and MD5 hashes are in `data/raw/manifest.csv`. Snapshot downloaded October 5, 2026 in America/New_York (October 6 UTC). This is a current data vintage restricted to April 2026, not data as known in April 2026.
+## Results and their role in the blog
 
-## Sample and formulas
+Numerical outputs are in `data/processed/`; charts are in `figures/`.
 
-Fixed level window: 2017-01 to 2026-04, inclusive: 112 months per country. Yield and NEER each have 560 observations; bilateral FX has 448 retained monthly-average observations. All requested months are present. No 2016 data are imported. Consequently, twelve-month changes start 2018-01 and end 2026-04: 100 observations per country, 500 in Figure 2 and 400 in Figure 3. All retained observations have source status `A`; flags are retained in the processed panel.
+| Output | Role in the analysis |
+|---|---|
+| [`monthly_panel.csv`](data/processed/monthly_panel.csv) | Country-month dataset containing the source values, US benchmark yields, spreads, and currency changes used throughout the blog. |
+| [`figure1.png`](figures/figure1.png) / [`figure1.pdf`](figures/figure1.pdf) | **Figure 1:** five country panels pairing domestic yields with NEER, introducing the question of whether they move together. |
+| [`figure2.png`](figures/figure2.png) / [`figure2.pdf`](figures/figure2.pdf) | **Figure 2:** twelve-month domestic yield changes against NEER appreciation, examining the absolute-yield intuition. |
+| [`figure3.png`](figures/figure3.png) / [`figure3.pdf`](figures/figure3.pdf) | **Figure 3:** twelve-month yield-spread changes against appreciation versus USD, examining relative yields. |
+| [`correlations.csv`](data/processed/correlations.csv) | Supplies the correlations in Figures 2–3 and the blog's comparison table. The table compares domestic yield changes and spread changes using the same dollar-appreciation outcome and sample. |
+| [`monthly_sensitivity.csv`](data/processed/monthly_sensitivity.csv) | Supplementary check using one-month yield and exchange-rate changes; not a separate blog figure. |
+| [`nonoverlap_sensitivity.csv`](data/processed/nonoverlap_sensitivity.csv) | Supplementary check using nine January-to-January observations per country; not a separate blog figure. |
+| [`base_year_check.csv`](data/processed/base_year_check.csv) | Data-validation output confirming that each country's 2020 NEER average is approximately 100. |
 
-Let y be a yield in percent per year, N the NEER index, E local currency per dollar, and s=y-y_US.
+## Reproduce the analysis
 
-- Domestic yield change: y_t-y_(t-12), in percentage points.
-- Spread change: s_t-s_(t-12), in percentage points.
-- Broad appreciation: 100*(N_t/N_(t-12)-1), percent.
-- Bilateral appreciation: 100*(E_(t-12)/E_t-1), percent. This is the return on the reciprocal monthly-average rate, not an average of daily inverse-rate returns.
+1. Download this repository using **Code → Download ZIP**, unzip it, and open R or RStudio. Alternatively, clone it:
 
-No inflation adjustment is used: absolute yield is not real yield. Higher yields are not realized bond returns. Monthly average rates are not tradeable endpoint prices. Figures describe contemporaneous comovement rather than a trading strategy, forecast or causal capital-flow test.
+   ```sh
+   git clone https://github.com/xia071212/blog4repo.git
+   ```
 
-## Figures and interpretation safeguards
+2. Use R 4.1 or newer, set the working directory to the downloaded `blog4repo` folder, and install the packages required by the runner:
 
-Figure 1 contains five country panels, each with two lines and dual axes. Blue solid lines are domestic yields; gold dashed lines are domestic NEER. All five panels use identical axis ranges. The explicit mapping is right-axis NEER = 10*left-axis plotting coordinate + 80; the displayed ranges are -2% to 6% and 60 to 140. Line crossings and relative visual slopes are not evidence of correlation. No data are excluded by these limits.
+   ```r
+   install.packages(c("curl", "xml2", "readr", "dplyr", "tidyr", "ggplot2", "knitr", "rmarkdown"))
+   ```
 
-Figure 2 compares domestic yield changes with NEER appreciation; Figure 3 compares spread changes with appreciation versus USD. Facets use common scales within each figure. Lines are descriptive OLS fits, with Pearson correlations; there are no significance tests or confidence intervals. Overlapping windows are serially dependent.
+3. Run the analysis from the R console:
 
-The article table fixes the currency outcome (USD appreciation) and the exact sample to compare domestic versus relative yield changes fairly. A higher signed correlation means closer alignment with the positive-yield intuition, not necessarily a stronger fit. Switzerland's absolute correlation magnitude is also slightly larger than its relative magnitude (0.266 versus 0.258); the substantive change is the sign. Britain's remains negative and becomes weaker in magnitude. Avoid claiming relative yields universally have greater explanatory power.
+   ```r
+   source("run_all.R")
+   ```
 
-Sensitivity outputs use (a) 111 one-month changes per non-US country and (b) nine non-overlapping January-to-January changes, January 2018 through January 2026. The relative-yield signs persist in both, but nine observations cannot establish stability or statistical significance. These are checks of descriptive signs, not causal identification or out-of-sample validation.
+   Or, from a terminal inside the repository:
 
-Three figures deliver the requested progression. No fourth chart is added: a country-specific event explanation would require additional evidence, and the UK exception is reported directly without inventing an event-driven cause.
+   ```sh
+   Rscript run_all.R
+   ```
 
-## Editorial and style revision — October 6, 2026
+4. Inspect the rebuilt CSV files in `data/processed/` and the three charts in `figures/`. The default run uses the included raw snapshot to reproduce the blog's numerical results. Tested package versions are recorded in [`session-info.txt`](session-info.txt).
 
-The article follows the existing course blog’s Flatly theme and copied site stylesheet, with author/date/categories, a table of contents, and a source note. The added stylesheet contains two Blog 4 selectors for the description and figure widths. Every section opens with its question; indicator meanings and quotation direction are explained; the conclusion answers the opening question before limitations. All data, calculations and charts are unchanged. Signed correlation and explanatory strength remain distinguished. The page is a standalone preview, not a published website update.
+To download updated official data instead of using the archived snapshot, run `Rscript run_all.R --refresh`. This overwrites the raw files and may change historical results if the providers have revised their data.
