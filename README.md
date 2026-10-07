@@ -18,15 +18,15 @@ Exact API requests and raw-file checksums are recorded in [`data/raw/manifest.cs
 
 The code standardizes country codes and month labels, retains BIS **monthly-average** observations (`COLLECTION=A`), and joins the datasets by country and month. It also attaches the same month's US yield to each country. It checks for duplicate or missing observations, complete monthly coverage, positive exchange-rate values, and the NEER base-year average. No interpolation, outlier removal, or inflation adjustment is applied.
 
-Let `y` be the domestic yield, `y_US` the US yield, `N` the NEER index, and `E` local currency units per dollar. The main variables are:
+Let $y$ be the domestic yield, $y_{US}$ the US yield, $s$ the domestic-minus-US yield spread, $N$ the NEER index, and $E$ local currency units per dollar. The main variables are:
 
 | Variable in the processed data | Calculation | Interpretation |
 |---|---|---|
-| `spread` | `y[t] - y_US[t]` | Domestic yield advantage over US Treasuries, in percentage points. |
-| `dy12` | `y[t] - y[t-12]` | Change in the domestic yield over twelve months, in percentage points. |
-| `ds12` | `spread[t] - spread[t-12]` | Change in the relative yield advantage over twelve months, in percentage points. |
-| `neer12` | `100 * (N[t] / N[t-12] - 1)` | Twelve-month appreciation against the currency basket, in percent. |
-| `fx12` | `100 * (E[t-12] / E[t] - 1)` | Twelve-month appreciation against the dollar, in percent. The ratio is reversed because the original quotation is local currency per dollar. |
+| `spread` | $y_t-y_{US,t}$ | Domestic yield advantage over US Treasuries, in percentage points. |
+| `dy12` | $y_t-y_{t-12}$ | Change in the domestic yield over twelve months, in percentage points. |
+| `ds12` | $s_t-s_{t-12}$ | Change in the relative yield advantage over twelve months, in percentage points. |
+| `neer12` | $100(N_t/N_{t-12}-1)$ | Twelve-month appreciation against the currency basket, in percent. |
+| `fx12` | $100(E_{t-12}/E_t-1)$ | Twelve-month appreciation against the dollar, in percent. The ratio is reversed because the original quotation is local currency per dollar. |
 
 The level data contain **112 months per country**: 560 yield observations, 560 NEER observations, and 448 retained bilateral exchange-rate observations. Twelve-month changes begin in January 2018, leaving **100 observations per country** through April 2026. The US is excluded from the dollar-relative comparison because its yield spread against itself is zero.
 
@@ -58,30 +58,10 @@ Numerical outputs are in `data/processed/`; charts are in `figures/`.
 
 ## Reproduce the analysis
 
-1. Download this repository using **Code → Download ZIP**, unzip it, and open R or RStudio. Alternatively, clone it:
+1. On this GitHub page, select **Code → Download ZIP**, then unzip the repository.
+2. Open RStudio with R 4.1 or newer. In the **Files** pane, navigate to the downloaded repository folder and choose **More → Set As Working Directory**.
+3. In **Tools → Install Packages**, install the packages required by the analysis: curl, xml2, readr, dplyr, tidyr, ggplot2, knitr, and rmarkdown.
+4. Open **run_all.R** and click **Source** to run the complete analysis using the included raw-data snapshot.
+5. Find the recreated numerical results in **data/processed/** and the three figures in **figures/**. Their connections to the blog are listed in the Results section above. The tested R and package versions are recorded in [session-info.txt](session-info.txt).
 
-   ```sh
-   git clone https://github.com/xia071212/blog4repo.git
-   ```
-
-2. Use R 4.1 or newer, set the working directory to the downloaded `blog4repo` folder, and install the packages required by the runner:
-
-   ```r
-   install.packages(c("curl", "xml2", "readr", "dplyr", "tidyr", "ggplot2", "knitr", "rmarkdown"))
-   ```
-
-3. Run the analysis from the R console:
-
-   ```r
-   source("run_all.R")
-   ```
-
-   Or, from a terminal inside the repository:
-
-   ```sh
-   Rscript run_all.R
-   ```
-
-4. Inspect the rebuilt CSV files in `data/processed/` and the three charts in `figures/`. The default run uses the included raw snapshot to reproduce the blog's numerical results. Tested package versions are recorded in [`session-info.txt`](session-info.txt).
-
-To download updated official data instead of using the archived snapshot, run `Rscript run_all.R --refresh`. This overwrites the raw files and may change historical results if the providers have revised their data.
+Use the included raw-data snapshot to reproduce the blog's results. Downloading newer data may produce different values if OECD or BIS have revised their historical observations.
