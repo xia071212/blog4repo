@@ -6,6 +6,8 @@ date: 2026-10-06
 date-format: "MMMM D, YYYY"
 categories: [Fixed Income, Exchange Rates, Yield Spreads]
 body-classes: blog4-post
+image: figures/yields-and-currencies.png
+image-alt: "Pastel illustration of a smiling bond certificate and currency coins, connected by yield curves and a question mark."
 lang: en
 format:
   html:
@@ -29,6 +31,8 @@ source('R/02_clean.R')
 source('R/03_figures.R')
 r <- function(c, col) sprintf('%.2f',stats[[col]][match(c,stats$country)])
 ```
+
+![](figures/yields-and-currencies.png){fig-alt="Pastel illustration of a smiling bond certificate and currency coins, connected by yield curves and a question mark."}
 
 In a volatile world, investors may seek the predictable income of government bonds. Higher yields can make those bonds look more attractive. Overseas investors buying unhedged foreign bonds also need the local currency, potentially increasing demand for it. This raises a natural question: **can more attractive government bond yields help strengthen a currency, or is the yield advantage over other countries what really matters?** Exchange-rate losses can offset bond income, making this distinction important for international investors.
 
